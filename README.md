@@ -10,6 +10,12 @@ The main task is to build a stateful model that:
 3.  Resets this internal state whenever a new, independent sequence begins.
 4.  Outputs a prediction vector (of N features) only when requested.
 
+## 💾 Dataset
+
+The training data for this competition can be found on Kaggle:
+
+* **Kaggle Dataset:** [https://www.kaggle.com/datasets/biradar1913/wunder](https://www.kaggle.com/datasets/biradar1913/wunder)
+
 ## ✅ Key Tasks: What Must Be Done
 
 Your entire solution must be implemented within a single Python class named `PredictionModel`, which will be saved in a file called `solution.py`.
@@ -64,6 +70,7 @@ class PredictionModel:
             data_point: An object with attributes:
                 - seq_ix (int): The ID for the current sequence.
                 - step_in_seq (int): The step number within the sequence.
+                CSS
                 - need_prediction (bool): True if a prediction is required.
                 - state (np.ndarray): The current market state vector (N features).
         
