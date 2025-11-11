@@ -104,6 +104,34 @@ class PredictionModel:
         # --- 5. Return Prediction (or None) ---
         return prediction_output
 ```
+## 🏆 Model Architecture
+
+This solution uses a stateful **Gated Recurrent Unit (GRU)** model, which is well-suited for sequence modeling and time-series forecasting.
+
+### Key Components:
+
+1.  **Preprocessing:**
+    * A `StandardScaler` (loaded from `scaler.joblib`) is used to normalize the input features. This is crucial for stabilizing RNN training and inference.
+
+2.  **Core Model (PyTorch):**
+    * The model is a stacked GRU network followed by a fully-connected output layer.
+    * `nn.GRU`: The main recurrent layer that processes the sequence.
+    * `nn.Linear`: A linear layer that maps the GRU's hidden output to the desired prediction shape (`N_FEATURES`).
+
+3.  **Hyperparameters:**
+    * **Input/Output Features:** `N_FEATURES = 32`
+    * **GRU Hidden Size:** `HIDDEN_SIZE = 256`
+    * **GRU Layers:** `NUM_LAYERS = 3`
+    * **Dropout:** `DROPOUT_RATE = 0.30` (applied between GRU layers)
+
+4.  **State Management:**
+    * The `PredictionModel` class maintains a dictionary (`self.hidden_states`) to store the last hidden state of the GRU for each active sequence (`seq_ix`).
+    * When a new sequence begins (`step_in_seq == 0` or new `seq_ix`), a fresh, zero-initialized hidden state is created.
+    * For every subsequent step in that sequence, the stored hidden state is passed to the model and the new output state is saved, preserving the model's "memory."
+
+5.  **Postprocessing:**
+    * The model's scaled output is passed through the `scaler.inverse_transform()` method to convert the predictions back to their original data scale, matching the format required for scoring.
+
 ## 📊 Evaluation
 
 The model's performance will be judged using the **R² (coefficient of determination)** score. A higher R² score is better.
@@ -118,9 +146,8 @@ You can use the `utils.py` file (if provided) to calculate this score locally an
 
 ## 🚀 Recommended Workflow
 
-1.  **Explore:** Use a Jupyter notebook to load and analyze `datasets/train.parquet`.
+1.  **Explore:** Use a Jupyter notebook to load and analyze the `.parquet` dataset from Kaggle.
 2.  **Validate:** Create a local validation set. Since sequences are independent, you can split them by `seq_ix` (e.g., 80% for training, 20% for validation).
-3.  **Develop:** Train a sequence model (like an LSTM, GRU, or Transformer) on your training set.
+3.  **Develop:** Train a sequence model (like the GRU architecture above) on your training set. Remember to save the `StandardScaler` and the model weights (`.pth`).
 4.  **Implement:** Transfer your trained model's logic into the `PredictionModel` class in `solution.py`.
-5.  **Package:** Create a `.zip` file containing `solution.py` and any necessary supporting files (like `.h5` or `.pth` model weights). Ensure `solution.py` is at the root of the zip.
-
+5.  **Package:** Create a `.zip` file containing `solution.py`, `scaler.joblib`, and `gru_model.pth`. Ensure all files are at the root of the zip.
