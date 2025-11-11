@@ -1,132 +1,119 @@
-# Welcome to the Wunder Challenge!
-2025-09-15
+# Market State Forecasting Model
 
-We're excited to have you here. This is a machine learning competition where you'll build a model to predict the future of market states from their past. It’s a tough challenge, but a very rewarding one. Let's get started!
+This project's goal is to develop a machine learning model that predicts the next market state vector based on a sequence of prior states. The model will be built to specification for a sequence modeling challenge.
 
-## Your mission
+## 🎯 Project Goal
 
-Your goal is to predict the next market state vector based on the sequence of states that came before it. Think of it as a sequence modeling problem. You'll be given the market's history up to a certain point, and you need to forecast what happens next.
+The main task is to build a stateful model that:
+1.  Receives market state data, one step at a time.
+2.  Maintains an internal "memory" or "state" (e.g., the hidden state of an RNN).
+3.  Resets this internal state whenever a new, independent sequence begins.
+4.  Outputs a prediction vector (of N features) only when requested.
 
-## How it works
+## ✅ Key Tasks: What Must Be Done
 
-The dataset is a single table in Parquet format, containing multiple independent sequences. Here’s what you need to know.
+Your entire solution must be implemented within a single Python class named `PredictionModel`, which will be saved in a file called `solution.py`.
 
-### The data format
+This class has two primary responsibilities:
 
-Each row in the table represents a single market state at a specific step in a sequence. The table has **N + 3** columns:
+### 1. Initialization (`__init__`)
+* This is where you'll load your trained model, initialize any internal state variables, and set up your prediction pipeline.
+* For example, you might load model weights, define a `self.current_seq_id = None`, and initialize `self.model_state = None`.
 
-*   `seq_ix`: An ID for the sequence. When this number changes, you're starting a new, completely independent sequence.
-*   `step_in_seq`: The step number within a sequence (from 0 to 999).
-*   `need_prediction`: A boolean that’s `True` if we need a prediction from you for the *next* step, and `False` otherwise.
-*   **N feature columns**: The remaining `N` columns are the anonymized numeric features that describe the market state.
+### 2. Prediction (`predict`)
+This method is the core of the project. It will be called repeatedly, once for each row (or `DataPoint`) in the dataset.
 
-### The sequences
+Your logic *must* handle the following:
 
-Each sequence is exactly **1000 steps** long.
+* **State Management:** Check if the `data_point.seq_ix` is new.
+    * If it is, you **must** reset your model's internal state (e.g., clear the RNN/LSTM hidden state). This is critical because sequences are independent.
+* **Prediction Trigger:** Check the `data_point.need_prediction` flag.
+    * If `False`: You should still update your model's internal state using the `data_point.state`, but you must return `None`.
+    * If `True`: You must:
+        1.  Generate the prediction for the *next* step (based on the history you've tracked).
+        2.  Return the prediction as a `numpy.ndarray` with shape `(N,)`.
+        3.  Update your model's internal state with the *current* `data_point.state` to be ready for the next call.
 
-> **Note:**
-> The first 100 steps (0-99) of every sequence are for warm-up. Your model can use them to build context, but we won't score your predictions here. Your score comes from predictions for steps 100 to 998.
+## 📝 Required File: `solution.py`
 
-Because each sequence is independent, you must reset your model’s internal state whenever you see a new `seq_ix`.
-
-You can also rely on two key facts about the data ordering:
-*   **Within a sequence**, all steps are ordered by time.
-*   **The sequences themselves** are randomly shuffled, so `seq_ix` and `seq_ix + 1` are not related.
-
-> **Tip: How to create a validation set**
-> Since all the sequences are independent and shuffled, you can create a reliable local validation set by splitting the sequences. For example, you could use the first 80% of the sequences for training and the remaining 20% for validation. You can split them by `seq_ix`.
-
-## Evaluation and metrics
-
-We'll evaluate your predictions using the **R²** (coefficient of determination) score.
-
-For each feature *i*, the score is calculated as:
-R²ᵢ = 1 - Σ(y_true - y_pred)² / Σ(y_true - y_mean)²
-
-The final score is the average of the R² scores across all N features.
-
-A higher R² score is better!
-
-## 🚀 Quick start
-
-The fastest way to get started is to run the simple example solution we've provided. This will help you understand the data flow and submission format.
-
-```bash
-# Navigate to the example directory
-cd examples/simple
-
-# Run the baseline solution
-python solution.py
-```
-
-For a full walkthrough, including setting up your Python environment, check out our detailed Quick Start Guide.
-
-After running the example, you'll be ready to build your own model. The provided solution is just a basic placeholder—the real fun is creating something more powerful!
-
-> **Tip: What models could work?**
-> Since this is a sequence modeling task, you could explore:
-> *   Recurrent models like **LSTM** or **GRU**.
-> *   Attention-based models like the **Transformer**.
-> *   Newer architectures like **Mamba-2**.
-
-## How to submit your solution
-
-Your submission must be a `.zip` file containing a `solution.py` file.
-
-### Required structure
-
-Your `solution.py` must define a class named `PredictionModel`. This class must have a `predict` method with the following signature:
+Your main deliverable is this file. It must contain the `PredictionModel` class with the exact structure below. All your logic, model loading, and state management must be built into this class.
 
 ```python
 import numpy as np
-from utils import DataPoint
+from utils import DataPoint # Assuming utils.py is provided
 
 class PredictionModel:
+    
     def __init__(self):
-        # Initialize your model, internal state, etc.
+        """
+        Initialize your model here.
+        - Load model weights (e.g., from a file included in your zip).
+        - Initialize internal state trackers.
+        """
+        # Example:
+        # self.model = self.load_my_model() 
+        # self.current_seq_id = -1
+        # self.model_state = None # e.g., for RNN hidden state
         pass
 
     def predict(self, data_point: DataPoint) -> np.ndarray | None:
-        # Your logic here.
-        if not data_point.need_prediction:
-            return None
+        """
+        Predict the next market state.
+        
+        Args:
+            data_point: An object with attributes:
+                - seq_ix (int): The ID for the current sequence.
+                - step_in_seq (int): The step number within the sequence.
+                - need_prediction (bool): True if a prediction is required.
+                - state (np.ndarray): The current market state vector (N features).
+        
+        Returns:
+            - np.ndarray of shape (N,) if need_prediction is True.
+            - None if need_prediction is False.
+        """
+        
+        # --- 1. State Management: Reset if new sequence ---
+        if data_point.seq_ix != self.current_seq_id:
+            # self.current_seq_id = data_point.seq_ix
+            # self.reset_model_state() # Call your state reset logic
+            pass
+        
+        # --- 2. Check if prediction is needed ---
+        prediction_output = None
+        if data_point.need_prediction:
+            # --- 3. Generate Prediction ---
+            # Use self.model_state and data_point.state to predict NEXT state
+            # prediction_output = self.model.predict(self.model_state, ...)
+            
+            # Placeholder: Replace with your model's actual output
+            prediction_output = np.zeros(data_point.state.shape)
+        
+        # --- 4. Update Internal State ---
+        # Feed the *current* state to your model to update its
+        # internal state for the *next* call.
+        # self.model_state = self.model.update(self.model_state, data_point.state)
+        pass
 
-        # When a prediction is needed, return a numpy array of length N.
-        prediction = np.zeros(data_point.state.shape) # Replace with your model's output
-        return prediction
+        # --- 5. Return Prediction (or None) ---
+        return prediction_output
 ```
+## 📊 Evaluation
 
-The `data_point` object passed to your `predict` method is an instance of the `DataPoint` class, which has the following attributes:
-*   `seq_ix: int`: The ID for the current sequence.
-*   `step_in_seq: int`: The step number within the sequence.
-*   `need_prediction: bool`: Whether a prediction is required for this point.
-*   `state: np.ndarray`: The current market state vector of N features.
+The model's performance will be judged using the **R² (coefficient of determination)** score. A higher R² score is better.
 
-Your `predict` method should:
-*   Return `None` when `need_prediction` is `False`.
-*   Return a `numpy.ndarray` of shape `(N,)` when `need_prediction` is `True`.
-*   Remember to manage and reset the model's state for each new sequence (`seq_ix`).
+The score is calculated for each of the N features *i* using the formula:
 
-### Packaging your solution
+$R^2_i = 1 - \frac{\sum(y_{\text{true}} - y_{\text{pred}})^2}{\sum(y_{\text{true}} - y_{\text{mean}})^2}$
 
-Your solution might include more than just `solution.py` (e.g., model weight files, helper Python modules, configs). Make sure to include all necessary files in your zip archive.
+The final competition score is the **average of the R² scores** across all N features.
 
-You can create the zip archive from your solution directory with a command like this:
+You can use the `utils.py` file (if provided) to calculate this score locally and validate your model's performance.
 
-```bash
-# From inside your solution folder (e.g., my_awesome_solution/)
-# This command zips up everything in the current directory.
-zip -r ../solution.zip .
-```
+## 🚀 Recommended Workflow
 
-> **Note:** Make sure `solution.py` is at the root level inside the zip archive, not inside another folder.
+1.  **Explore:** Use a Jupyter notebook to load and analyze `datasets/train.parquet`.
+2.  **Validate:** Create a local validation set. Since sequences are independent, you can split them by `seq_ix` (e.g., 80% for training, 20% for validation).
+3.  **Develop:** Train a sequence model (like an LSTM, GRU, or Transformer) on your training set.
+4.  **Implement:** Transfer your trained model's logic into the `PredictionModel` class in `solution.py`.
+5.  **Package:** Create a `.zip` file containing `solution.py` and any necessary supporting files (like `.h5` or `.pth` model weights). Ensure `solution.py` is at the root of the zip.
 
-## What's in the box
-
-We've provided a few files to help you:
-
-*   `datasets/train.parquet`: A sample dataset to help you build and test your models.
-*   `utils.py`: Contains helper classes and the scoring function so you can check your performance locally.
-*   `examples/simple/solution.py`: A minimal working example to show the required submission format.
-
-Good luck, and have fun building! We can't wait to see what you create.
